@@ -1,0 +1,277 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  tutor
+  customer
+  admin
+}
+
+enum EducationLevel {
+  a_level
+  university
+}
+
+enum SubjectLevel {
+  gcse
+  a_level
+  both
+}
+
+enum Curriculum {
+  gcse
+  a_level
+  both
+}
+
+enum CustomerRole {
+  student
+  parent
+}
+
+enum ConnectionStatus {
+  pending
+  accepted
+  declined
+}
+
+enum MessageType {
+  text
+  payment_request
+  session_link
+}
+
+enum PaymentRequestStatus {
+  pending
+  paid
+  failed
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model User {
+  id                     String    @id @default(uuid())
+  email                  String    @unique
+  passwordHash           String
+  role                   Role
+  emailVerified          Boolean   @default(false)
+  verificationToken      String?
+  verificationTokenExpiry DateTime?
+  resetToken             String?
+  resetTokenExpiry       DateTime?
+  failedLoginAttempts    Int       @default(0)
+  lockedUntil            DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  deletedAt              DateTime? // soft delete for GDPR
+
+  tutorProfile    TutorProfile?
+  customerProfile CustomerProfile?
+  sentMessages    Message[]        @relation("MessageSender")
+  auditLogs       AuditLog[]       @relation("AuditLogAdmin")
+
+  @@map("users")
+}
+
+model TutorProfile {
+  id             String         @id @default(uuid())
+  userId         String         @unique
+  fullName       String
+  educationLevel EducationLevel
+  institutionName String
+  bio            String
+  hourlyRate     Decimal        @db.Decimal(10, 2)
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  user            User              @relation(fields: [userId], references: [id])
+  subjects        TutorSubject[]
+  yearGroups      TutorYearGroup[]
+  availability    Availability[]
+  connections     Connection[]
+  paymentRequests PaymentRequest[]
+  payments        Payment[]         @relation("TutorPayments")
+  reviews         Review[]
+
+  @@map("tutor_profiles")
+}
+
+model TutorSubject {
+  id             String       @id @default(uuid())
+  tutorProfileId String
+  subjectId      String
+  level          SubjectLevel
+
+  tutorProfile TutorProfile @relation(fields: [tutorProfileId], references: [id])
+  subject      Subject      @relation(fields: [subjectId], references: [id])
+
+  @@map("tutor_subjects")
+}
+
+model TutorYearGroup {
+  id             String @id @default(uuid())
+  tutorProfileId String
+  yearGroup      Int    // 7–13
+
+  tutorProfile TutorProfile @relation(fields: [tutorProfileId], references: [id])
+
+  @@map("tutor_year_groups")
+}
+
+model Availability {
+  id             String @id @default(uuid())
+  tutorProfileId String
+  dayOfWeek      Int    // 0 (Mon) – 6 (Sun)
+  startHour      Int    // 6–21
+
+  tutorProfile TutorProfile @relation(fields: [tutorProfileId], references: [id])
+
+  @@map("availability")
+}
+
+model Subject {
+  id         String     @id @default(uuid())
+  name       String     @unique
+  curriculum Curriculum
+
+  tutorSubjects TutorSubject[]
+
+  @@map("subjects")
+}
+
+model CustomerProfile {
+  id        String      @id @default(uuid())
+  userId    String      @unique
+  fullName  String
+  phone     String
+  role      CustomerRole
+  yearGroup Int?        // null if parent
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id])
+  connections Connection[]
+  payments    Payment[]    @relation("CustomerPayments")
+  reviews     Review[]
+
+  @@map("customer_profiles")
+}
+
+model Connection {
+  id             String           @id @default(uuid())
+  customerId     String
+  tutorProfileId String
+  status         ConnectionStatus @default(pending)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  declinedAt     DateTime?        // for 30-day cooldown enforcement
+
+  customer        CustomerProfile  @relation(fields: [customerId], references: [id])
+  tutorProfile    TutorProfile     @relation(fields: [tutorProfileId], references: [id])
+  messages        Message[]
+  paymentRequests PaymentRequest[]
+
+  @@map("connections")
+}
+
+model Message {
+  id          String      @id @default(uuid())
+  connectionId String
+  senderId    String?     // nullable for GDPR anonymisation
+  content     String
+  messageType MessageType @default(text)
+  isRead      Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+
+  connection     Connection      @relation(fields: [connectionId], references: [id])
+  sender         User?           @relation("MessageSender", fields: [senderId], references: [id])
+  paymentRequest PaymentRequest? @relation("PaymentRequestMessage")
+
+  @@map("messages")
+}
+
+model PaymentRequest {
+  id             String               @id @default(uuid())
+  connectionId   String
+  tutorProfileId String
+  messageId      String               @unique
+  amount         Decimal              @db.Decimal(10, 2)
+  currency       String               @default("gbp")
+  status         PaymentRequestStatus @default(pending)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  connection   Connection   @relation(fields: [connectionId], references: [id])
+  tutorProfile TutorProfile @relation(fields: [tutorProfileId], references: [id])
+  message      Message      @relation("PaymentRequestMessage", fields: [messageId], references: [id])
+  payment      Payment?     @relation("PaymentRequestFulfillment")
+
+  @@map("payment_requests")
+}
+
+model Payment {
+  id                     String        @id @default(uuid())
+  customerId             String?       // nullable for GDPR anonymisation
+  tutorProfileId         String
+  paymentRequestId       String        @unique
+  stripeSessionId        String        @unique
+  stripePaymentIntentId  String?
+  status                 PaymentStatus @default(pending)
+  amount                 Decimal       @db.Decimal(10, 2)
+  currency               String        @default("gbp")
+  createdAt              DateTime      @default(now())
+
+  customer       CustomerProfile? @relation("CustomerPayments", fields: [customerId], references: [id])
+  tutorProfile   TutorProfile    @relation("TutorPayments", fields: [tutorProfileId], references: [id])
+  paymentRequest PaymentRequest  @relation("PaymentRequestFulfillment", fields: [paymentRequestId], references: [id])
+
+  @@map("payments")
+}
+
+model Review {
+  id             String   @id @default(uuid())
+  customerId     String
+  tutorProfileId String
+  rating         Int      // 1–5
+  reviewText     String?
+  isHidden       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  customer     CustomerProfile @relation(fields: [customerId], references: [id])
+  tutorProfile TutorProfile    @relation(fields: [tutorProfileId], references: [id])
+
+  @@map("reviews")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  adminUserId String
+  action      String
+  targetType  String
+  targetId    String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  adminUser User @relation("AuditLogAdmin", fields: [adminUserId], references: [id])
+
+  @@map("audit_logs")
+}

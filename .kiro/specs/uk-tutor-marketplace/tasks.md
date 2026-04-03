@@ -1,0 +1,369 @@
+# Implementation Plan: UK Tutor Marketplace
+
+## Overview
+
+Incremental implementation of the UK Tutor Marketplace using React (TypeScript) + Vite frontend, Node.js + Express (TypeScript) backend, PostgreSQL + Prisma ORM, JWT auth, Socket.io, Stripe, and SendGrid. Tasks are ordered so each step builds on the previous, ending with full integration.
+
+## Tasks
+
+- [x] 1. Project scaffolding and shared configuration
+  - Initialise backend: `npm init`, TypeScript, Express, Prisma, Jest, fast-check
+  - Initialise frontend: Vite + React + TypeScript
+  - Configure ESLint, Prettier, and path aliases for both workspaces
+  - Create monorepo root `package.json` with workspace scripts
+  - Add `.env.example` with all required environment variable keys (DATABASE_URL, JWT_SECRET, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, SENDGRID_API_KEY, etc.)
+  - _Requirements: 11.4_
+
+- [x] 2. Database schema and Prisma setup
+  - [x] 2.1 Write Prisma schema covering all entities: User, TutorProfile, TutorSubject, TutorYearGroup, Availability, Subject, CustomerProfile, Connection, Message, PaymentRequest, Payment, Review, AuditLog
+    - Include `deletedAt` on User for GDPR soft-delete
+    - Include `isActive` on TutorProfile, `isHidden` on Review
+    - _Requirements: 1.1, 2.1, 3.1, 4.1, 6.1, 7.1, 8.1, 13.3, 14.1, 15.3_
+  - [x] 2.2 Create seed file populating the Subject table with all 17+ UK curriculum subjects at GCSE/A-Level
+    - _Requirements: 12.1_
+  - [x] 2.3 Write and run initial Prisma migration
+    - _Requirements: all data model requirements_
+
+- [x] 3. Authentication — backend
+  - [x] 3.1 Implement `POST /api/auth/register/tutor` and `POST /api/auth/register/customer`
+    - Validate email format (RFC 5322), required fields, ToS acceptance flag
+    - Hash password with bcrypt cost factor 12
+    - Generate UUID verification token, store with expiry, send via SendGrid
+    - Return 409 on duplicate email, 400 on validation failure
+    - _Requirements: 1.1–1.5, 4.1–4.5, 11.3, 13.2_
+  - [ ]* 3.2 Write property test for tutor/customer registration validation
+    - **Property 1: Email format validation rejects invalid inputs**
+    - **Validates: Requirements 1.2, 4.3**
+    - **Property 2: Tutor registration requires at least one subject and year group**
+    - **Validates: Requirements 1.3**
+    - **Property 4: Registration triggers a verification email**
+    - **Validates: Requirements 1.5, 4.5**
+    - **Property 29: Registration requires acceptance of Privacy Policy and ToS**
+    - **Validates: Requirements 13.2**
+  - [x] 3.3 Implement `GET /api/auth/verify-email?token=`
+    - Mark `emailVerified = true`, clear token; return 400 on invalid/expired token
+    - _Requirements: 1.6, 4.6_
+  - [ ]* 3.4 Write property test for email verification
+    - **Property 3: Verification token activates account**
+    - **Validates: Requirements 1.6, 4.6**
+  - [x] 3.5 Implement `POST /api/auth/login`
+    - Validate credentials, check `emailVerified`, enforce account lockout (5 failures → 15 min lock, send lockout email)
+    - Issue JWT access token (15 min) + refresh token (7 day, httpOnly cookie)
+    - Return 423 with time-remaining on locked account
+    - _Requirements: 11.1, 11.2_
+  - [ ]* 3.6 Write property test for account lockout
+    - **Property 26: Account lockout after 5 consecutive failed logins**
+    - **Validates: Requirements 11.2**
+  - [ ]* 3.7 Write property test for password storage
+    - **Property 27: Passwords are stored as bcrypt hashes**
+    - **Validates: Requirements 11.3**
+  - [x] 3.8 Implement `POST /api/auth/refresh`, `POST /api/auth/logout`
+    - Refresh rotates access token from httpOnly cookie; logout clears cookie
+    - _Requirements: 11.1_
+  - [x] 3.9 Implement `POST /api/auth/forgot-password` and `POST /api/auth/reset-password`
+    - Generate UUID reset token with 60-min expiry; validate on reset; clear after use
+    - _Requirements: 11.5, 11.6_
+  - [ ]* 3.10 Write property test for password reset token TTL
+    - **Property 28: Password reset token has a 60-minute TTL**
+    - **Validates: Requirements 11.5, 11.6**
+  - [x] 3.11 Implement JWT auth middleware and role-guard middleware (tutor / customer / admin)
+    - _Requirements: 11.1, 15.1, 15.2_
+
+- [ ] 4. Checkpoint — auth layer
+  - Ensure all auth tests pass, ask the user if questions arise.
+
+- [x] 5. Tutor profile and availability — backend
+  - [x] 5.1 Implement `POST /api/auth/register/tutor` profile creation (TutorProfile, TutorSubject, TutorYearGroup rows)
+    - Validate subjects array non-empty, year groups non-empty
+    - _Requirements: 1.1, 1.3, 12.2, 12.3_
+  - [x] 5.2 Implement `GET /api/tutors/:id` — public profile endpoint
+    - Return name, education level, institution, subjects, year groups, hourly rate, bio, availability, average rating
+    - Never include email or phone in response
+    - _Requirements: 3.3, 3.4_
+  - [ ]* 5.3 Write property test for public profile contact detail exclusion
+    - **Property 8: Public profile and search results never expose contact details**
+    - **Validates: Requirements 3.4, 5.7, 7.7**
+  - [x] 5.4 Implement `PUT /api/tutors/:id/profile` — authenticated tutor updates bio, subjects, year groups, hourly rate
+    - _Requirements: 3.1, 3.2_
+  - [ ]* 5.5 Write property test for profile update round-trip
+    - **Property 7: Profile update round-trip**
+    - **Validates: Requirements 3.2, 3.3**
+  - [x] 5.6 Implement `PUT /api/tutors/:id/availability` — save availability slots
+    - Validate day 0–6, hour 6–21; replace existing slots atomically
+    - _Requirements: 2.1, 2.2, 2.4, 2.5_
+  - [ ]* 5.7 Write property tests for availability
+    - **Property 5: Availability round-trip**
+    - **Validates: Requirements 2.2, 2.3**
+    - **Property 6: Availability slots are constrained to 06:00–22:00**
+    - **Validates: Requirements 2.5**
+
+- [x] 6. Tutor search and listing — backend
+  - [x] 6.1 Implement `GET /api/tutors` — paginated listing (20 per page), only active + verified tutors
+    - _Requirements: 10.1, 10.2, 10.3_
+  - [ ]* 6.2 Write property test for listing pagination
+    - **Property 25: Listing page pagination enforces 20-per-page maximum**
+    - **Validates: Requirements 10.3**
+  - [x] 6.3 Implement `GET /api/tutors/search?subject=&yearGroup=&day=`
+    - Filter by subject (required), optional yearGroup (7–13), optional day (0–6)
+    - Return only active + verified tutors; never include contact details
+    - _Requirements: 5.1–5.7_
+  - [ ]* 6.4 Write property tests for search filters
+    - **Property 9: Subject search returns only matching verified tutors**
+    - **Validates: Requirements 5.2**
+    - **Property 10: Year group filter returns only matching tutors**
+    - **Validates: Requirements 5.3**
+    - **Property 11: Availability day filter returns only matching tutors**
+    - **Validates: Requirements 5.4**
+
+- [x] 7. Connection requests — backend
+  - [x] 7.1 Implement `POST /api/connections` — customer sends connection request
+    - Reject if connection already pending/accepted (409), or within 30-day cooldown after decline (409 with days-remaining)
+    - Create connection record with status `pending`, emit notification to tutor
+    - _Requirements: 6.2, 6.5_
+  - [ ]* 7.2 Write property tests for connection creation
+    - **Property 13: Connect request creates a pending connection and notifies the tutor**
+    - **Validates: Requirements 6.2**
+    - **Property 15: Declined connection enforces 30-day cooldown**
+    - **Validates: Requirements 6.5**
+  - [x] 7.3 Implement `PATCH /api/connections/:id` — tutor accepts or declines
+    - On accept: set status `accepted`, create Chat (no separate table needed — connection IS the chat room), notify customer
+    - On decline: set status `declined`, set `declinedAt`, notify customer
+    - _Requirements: 6.3, 6.4, 6.5_
+  - [ ]* 7.4 Write property tests for connection acceptance
+    - **Property 14: Accepting a connection establishes it and notifies the customer**
+    - **Validates: Requirements 6.4**
+    - **Property 16: Accepted connection creates an accessible chat conversation**
+    - **Validates: Requirements 7.1**
+  - [x] 7.5 Implement `GET /api/connections` — list connections for logged-in user
+    - Include connection status for each entry
+    - _Requirements: 6.1, 6.7_
+  - [ ]* 7.6 Write property test for connection status display
+    - **Property 12: Connection status display matches actual state**
+    - **Validates: Requirements 6.1, 6.7**
+
+- [ ] 8. Checkpoint — connections layer
+  - Ensure all connection tests pass, ask the user if questions arise.
+
+- [x] 9. In-app messaging — backend
+  - [x] 9.1 Implement `GET /api/messages/:connectionId` — fetch chat history
+    - Require caller to be a party to the connection; return messages ordered by `createdAt` ASC
+    - _Requirements: 7.2, 7.3, 7.4_
+  - [x] 9.2 Implement `POST /api/messages/:connectionId` — send a text message (REST fallback)
+    - Require accepted connection; set `isRead = false` for recipient; trigger notification
+    - _Requirements: 7.2, 7.6_
+  - [ ]* 9.3 Write property tests for messaging
+    - **Property 17: Message send round-trip**
+    - **Validates: Requirements 7.2, 7.4**
+    - **Property 18: Messages are displayed in chronological order**
+    - **Validates: Requirements 7.3**
+    - **Property 19: Unread message count matches actual unread messages**
+    - **Validates: Requirements 7.5**
+    - **Property 20: New message triggers a notification to the recipient**
+    - **Validates: Requirements 7.6**
+  - [x] 9.4 Set up Socket.io server on the Express app
+    - Authenticate socket connections via JWT
+    - Join/leave rooms scoped to `connectionId` on connect/disconnect
+    - Handle `send_message` event: persist to DB, broadcast to room, trigger notification
+    - _Requirements: 7.2, 7.6_
+  - [ ]* 9.5 Write property test for URL rendering (backend message type detection)
+    - **Property 24: URLs in chat messages are rendered as clickable links**
+    - **Validates: Requirements 9.1**
+
+- [x] 10. Payment requests and Stripe — backend
+  - [x] 10.1 Implement `POST /api/payment-requests` — tutor sends payment request
+    - Require accepted connection between tutor and customer; validate amount > 0
+    - Insert PaymentRequest row (status `pending`) and a Message row (type `payment_request`) in the same transaction
+    - Notify customer
+    - _Requirements: 8.1, 8.2_
+  - [ ]* 10.2 Write property tests for payment requests
+    - **Property 21: Only connected tutors can send payment requests**
+    - **Validates: Requirements 8.1**
+    - **Property 22: Payment request appears in chat and notifies the customer**
+    - **Validates: Requirements 8.2**
+  - [x] 10.3 Implement `POST /api/payments/checkout` — customer initiates Stripe Checkout Session
+    - Look up PaymentRequest, create Stripe Checkout Session with amount and metadata
+    - Return `sessionUrl` to frontend
+    - _Requirements: 8.3_
+  - [x] 10.4 Implement `POST /api/webhooks/stripe` — handle `checkout.session.completed`
+    - Verify Stripe webhook signature; update PaymentRequest to `paid`; insert Payment record; notify tutor
+    - Handle `payment_intent.payment_failed`: leave PaymentRequest as `pending`, surface error
+    - _Requirements: 8.4, 8.5, 8.6_
+  - [ ]* 10.5 Write property test for payment completion
+    - **Property 23: Payment completion records the payment and notifies the tutor**
+    - **Validates: Requirements 8.4**
+  - [x] 10.6 Implement `GET /api/payments/history` — customer's payment history
+    - _Requirements: 8.6_
+
+- [ ] 11. Checkpoint — payments layer
+  - Ensure all payment tests pass, ask the user if questions arise.
+
+- [x] 12. Reviews — backend
+  - [x] 12.1 Implement `POST /api/tutors/:id/reviews` — customer submits review
+    - Gate on completed Payment record for this customer/tutor pair
+    - Validate rating integer 1–5; enforce one review per customer/tutor pair (409 on duplicate)
+    - Run profanity/content filter; reject with 400 if triggered
+    - _Requirements: 14.1, 14.2, 14.8, 14.9, 14.10_
+  - [ ]* 12.2 Write property tests for review submission
+    - **Property 31: Only customers with a completed payment can submit reviews**
+    - **Validates: Requirements 14.1**
+    - **Property 32: Review rating must be an integer between 1 and 5**
+    - **Validates: Requirements 14.2**
+    - **Property 35: One review per customer per tutor**
+    - **Validates: Requirements 14.8, 14.9**
+  - [x] 12.3 Implement `GET /api/tutors/:id/reviews` — public review listing
+    - Exclude hidden reviews; include first name, rating, text, date; exclude email/phone/surname
+    - Calculate and return average rating (arithmetic mean of non-hidden ratings, rounded to 1 dp)
+    - _Requirements: 14.3, 14.4, 14.5, 14.6, 14.7_
+  - [ ]* 12.4 Write property tests for review display and average rating
+    - **Property 33: Review display includes required fields and excludes private fields**
+    - **Validates: Requirements 14.4, 14.5**
+    - **Property 34: Average rating calculation is correct and rounded to 1 decimal place**
+    - **Validates: Requirements 14.6**
+  - [x] 12.5 Implement `PUT /api/reviews/:id` — customer edits own review
+    - _Requirements: 14.9_
+
+- [x] 13. Admin panel — backend
+  - [x] 13.1 Implement `GET /api/admin/dashboard` — platform metrics
+    - Return total tutors, customers, active connections, completed payments, submitted reviews
+    - _Requirements: 15.3_
+  - [x] 13.2 Implement `GET /api/admin/users` with search and filter; `PATCH /api/admin/users/:id/status` to activate/deactivate
+    - On deactivate: set `TutorProfile.isActive = false`; write audit log entry
+    - On reactivate: set `TutorProfile.isActive = true`; write audit log entry
+    - _Requirements: 15.4, 15.5, 15.6, 15.9_
+  - [ ]* 13.3 Write property tests for admin user management
+    - **Property 36: Non-admin users receive 403 on admin routes**
+    - **Validates: Requirements 15.1, 15.2**
+    - **Property 37: Deactivated tutor is excluded from search and listing**
+    - **Validates: Requirements 15.5**
+    - **Property 38: Reactivation restores tutor visibility**
+    - **Validates: Requirements 15.6**
+  - [x] 13.4 Implement `GET /api/admin/reviews` and `DELETE /api/admin/reviews/:id`
+    - On delete: set `Review.isHidden = true`; recalculate average rating; write audit log entry
+    - _Requirements: 15.7, 15.8, 15.9_
+  - [ ]* 13.5 Write property tests for review moderation and audit log
+    - **Property 39: Review removal hides review and recalculates average**
+    - **Validates: Requirements 15.8**
+    - **Property 40: Admin actions are recorded in the audit log**
+    - **Validates: Requirements 15.9**
+  - [x] 13.6 Implement `GET /api/admin/audit` — paginated audit log
+    - _Requirements: 15.9_
+
+- [x] 14. GDPR deletion — backend
+  - [x] 14.1 Implement `DELETE /api/customers/:id` — soft-delete (set `deletedAt`)
+    - Require authenticated owner or admin; return 204
+    - _Requirements: 13.3, 13.4_
+  - [x] 14.2 Write scheduled job (cron) that hard-deletes User records where `deletedAt < NOW() - 30 days`
+    - Anonymise associated Payment rows (set `customerId = null`) and Message rows (set `senderId = null`, content = "[deleted]")
+    - _Requirements: 13.4_
+  - [ ]* 14.3 Write property test for GDPR deletion
+    - **Property 30: Account deletion marks user data for removal within 30 days**
+    - **Validates: Requirements 13.4**
+
+- [x] 15. Checkpoint — backend complete
+  - Ensure all backend tests pass, ask the user if questions arise.
+
+- [x] 16. Frontend — shared infrastructure
+  - [x] 16.1 Set up React Router v6 with all routes defined in the design (public, customer-auth, tutor-auth, admin-auth)
+    - Implement `ProtectedRoute` component that checks JWT and role
+    - _Requirements: 11.1, 15.1, 15.2_
+  - [x] 16.2 Implement Axios (or fetch) API client with JWT access token injection and automatic refresh on 401
+    - _Requirements: 11.1_
+  - [x] 16.3 Implement auth context/store (React Context or Zustand) holding current user, role, and token
+    - _Requirements: 11.1_
+
+- [x] 17. Frontend — authentication pages
+  - [x] 17.1 Build Tutor Registration page (`/register/tutor`)
+    - Form fields: full name, email, phone, education level, institution, subjects (multi-select from API), year groups (multi-select), hourly rate, bio, ToS acceptance checkbox
+    - Client-side validation mirroring backend rules; display inline errors
+    - _Requirements: 1.1, 1.2, 1.3, 1.4, 12.1, 12.2, 12.3, 13.1, 13.2_
+  - [x] 17.2 Build Customer Registration page (`/register/customer`)
+    - Form fields: full name, email, phone, role (Student/Parent); conditional year group field for Student role
+    - _Requirements: 4.1, 4.2, 4.3, 4.4, 13.1, 13.2_
+  - [x] 17.3 Build Login page (`/login`) with email + password; display lockout message and unverified-email prompt
+    - _Requirements: 11.1, 11.2, 1.7_
+  - [x] 17.4 Build Forgot Password and Reset Password pages
+    - _Requirements: 11.5, 11.6_
+
+- [x] 18. Frontend — public tutor discovery
+  - [x] 18.1 Build Home / Search page (`/`) with subject search input; display results list
+    - Each result card: name, education level, subjects, year groups, hourly rate, availability summary, average rating
+    - Never render email or phone
+    - _Requirements: 5.1, 5.2, 5.6, 5.7_
+  - [x] 18.2 Add year group and day-of-week filter controls to search page
+    - _Requirements: 5.3, 5.4, 5.5_
+  - [x] 18.3 Build Tutor Listing page (`/tutors`) with pagination (20 per page)
+    - _Requirements: 10.1, 10.2, 10.3, 10.4_
+  - [x] 18.4 Build Tutor Profile page (`/tutors/:id`)
+    - Display all public fields; show Connect / Pending / Connected button based on connection state
+    - Redirect unauthenticated visitors to customer registration on Connect click
+    - Display reviews section with average rating, individual reviews (first name, rating, text, date)
+    - _Requirements: 3.3, 3.4, 6.1, 6.6, 6.7, 14.3, 14.4, 14.5, 14.6, 14.7_
+
+- [x] 19. Frontend — dashboards and availability management
+  - [x] 19.1 Build Tutor Dashboard (`/dashboard/tutor`) with profile edit form and availability grid
+    - Availability grid: 7-column (Mon–Sun) × 16-row (06:00–21:00) checkbox grid
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2_
+  - [x] 19.2 Build Customer Dashboard (`/dashboard/customer`) showing connections and payment history
+    - _Requirements: 8.6_
+
+- [x] 20. Frontend — messaging and payment UI
+  - [x] 20.1 Build Conversations List page (`/messages`) showing all connections with unread count badges
+    - _Requirements: 7.5_
+  - [x] 20.2 Build Chat Conversation page (`/messages/:connectionId`)
+    - Display messages in chronological order (oldest first); render URLs as clickable `<a>` tags
+    - Show payment request messages inline with "Pay now" button
+    - Show session link messages with clickable link
+    - _Requirements: 7.2, 7.3, 7.4, 8.2, 9.1, 9.2, 9.3_
+  - [x] 20.3 Integrate Socket.io client in the Chat page
+    - Join room on mount, leave on unmount; append incoming messages to local state in real-time
+    - Reconnect with exponential backoff on disconnect
+    - _Requirements: 7.2, 7.6_
+  - [x] 20.4 Add payment request send UI for tutors (amount input + "Request Payment" button in chat toolbar)
+    - _Requirements: 8.1_
+  - [x] 20.5 Implement Stripe Checkout redirect flow for customers paying a payment request
+    - Call `POST /api/payments/checkout`, redirect to Stripe-hosted page, handle success/cancel return URLs
+    - _Requirements: 8.3, 8.5_
+  - [x] 20.6 Build review submission form on Tutor Profile page (visible only to customers with a completed payment)
+    - Star rating widget (1–5) + optional text area; display edit form if review already exists
+    - _Requirements: 14.1, 14.8, 14.9_
+
+- [x] 21. Frontend — admin panel
+  - [x] 21.1 Build Admin Dashboard page (`/admin`) with metrics cards (total tutors, customers, connections, payments, reviews)
+    - _Requirements: 15.3_
+  - [x] 21.2 Build User Management page (`/admin/users`) with search/filter table and activate/deactivate actions
+    - _Requirements: 15.4, 15.5, 15.6_
+  - [x] 21.3 Build Review Moderation page (`/admin/reviews`) with remove action
+    - _Requirements: 15.7, 15.8_
+  - [x] 21.4 Build Audit Log page (`/admin/audit`) with paginated table (admin ID, action, target, UTC timestamp)
+    - _Requirements: 15.9_
+
+- [x] 22. Frontend — static/legal pages
+  - [x] 22.1 Add Privacy Policy and Terms of Service pages with footer links on every page
+    - _Requirements: 13.1_
+
+- [x] 23. Checkpoint — frontend complete
+  - Ensure all frontend tests pass and the UI renders correctly end-to-end, ask the user if questions arise.
+
+- [ ] 24. Integration wiring and end-to-end validation
+  - [ ] 24.1 Wire Stripe webhook secret and verify signature in `POST /api/webhooks/stripe`; test with Stripe CLI
+    - _Requirements: 8.4, 8.6_
+  - [ ] 24.2 Wire SendGrid API key; confirm verification, confirmation, lockout, and notification emails are sent in all required flows
+    - _Requirements: 1.5, 4.5, 11.2, 11.5_
+  - [ ] 24.3 Write unit tests for all remaining untested backend routes (auth middleware, role guards, 403 enforcement, profanity filter, pagination boundaries, connection state machine, Socket.io room scoping)
+    - _Requirements: 11.1, 11.2, 14.10, 15.1, 15.2_
+  - [ ] 24.4 Confirm all 40 property-based tests are implemented in the correct test files per the design's test file structure, each tagged with `// Feature: uk-tutor-marketplace, Property N: ...` and running ≥ 100 iterations
+    - _Requirements: all correctness properties_
+
+- [x] 25. Final checkpoint — all tests pass
+  - Ensure all unit tests and property-based tests pass, ask the user if questions arise.
+
+## Notes
+
+- Tasks marked with `*` are optional and can be skipped for a faster MVP
+- Each task references specific requirements for traceability
+- Property tests use fast-check and must run ≥ 100 iterations each
+- Unit tests use Jest
+- Test files follow the structure defined in the design document (`src/__tests__/unit/` and `src/__tests__/property/`)
+- The GDPR hard-delete scheduled job (task 14.2) should be implemented as a standalone script runnable via cron or a job scheduler
+- Stripe webhook handler must verify the `stripe-signature` header before processing any event
+- Contact details (email, phone) must never appear in any API response accessible to the other party — enforce this at the serialisation layer
