@@ -16,7 +16,6 @@ interface ConnectionRequest {
   createdAt: string;
   customer: { fullName: string };
 }
-
 interface TutorProfileData {
   id: string;
   bio: string;
@@ -46,23 +45,6 @@ export default function TutorDashboard() {
   const [savingAvail, setSavingAvail] = useState(false);
   const [connections, setConnections] = useState<ConnectionRequest[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-
-export default function TutorDashboard() {
-  const [profileId, setProfileId] = useState('');
-  const [bio, setBio] = useState('');
-  const [hourlyRate, setHourlyRate] = useState('');
-  const [institutionName, setInstitutionName] = useState('');
-  const [availableSubjects, setAvailableSubjects] = useState<SubjectOption[]>([]);
-  const [subjects, setSubjects] = useState<SubjectEntry[]>([]);
-  const [yearGroups, setYearGroups] = useState<number[]>([]);
-  const [availability, setAvailability] = useState<Set<string>>(new Set());
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [profileError, setProfileError] = useState('');
-  const [profileSuccess, setProfileSuccess] = useState('');
-  const [availSuccess, setAvailSuccess] = useState('');
-  const [availError, setAvailError] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [savingAvail, setSavingAvail] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -122,11 +104,11 @@ export default function TutorDashboard() {
     try {
       await api.patch(`/api/connections/${connectionId}`, { action });
       setConnections((prev) => prev.map((c) =>
-        c.id === connectionId ? { ...c, status: action === 'accept' ? 'accepted' : 'declined' } : c
+        c.id === connectionId
+          ? { ...c, status: action === 'accept' ? 'accepted' : 'declined' }
+          : c
       ));
-    } catch {
-      // ignore
-    } finally {
+    } catch { /* ignore */ } finally {
       setActionLoading(null);
     }
   }
@@ -187,10 +169,10 @@ export default function TutorDashboard() {
           }}>
             <div>
               <strong>{conn.customer.fullName}</strong>
-              <span className={`badge ml-2 ${
-                conn.status === 'pending' ? 'badge-yellow' :
-                conn.status === 'accepted' ? 'badge-green' : 'badge-red'
-              }`} style={{ marginLeft: '0.5rem' }}>
+              <span className={
+                conn.status === 'pending' ? 'badge badge-yellow' :
+                conn.status === 'accepted' ? 'badge badge-green' : 'badge badge-red'
+              } style={{ marginLeft: '0.5rem' }}>
                 {conn.status}
               </span>
               <p className="text-muted" style={{ fontSize: '0.8rem', margin: 0 }}>
@@ -200,27 +182,21 @@ export default function TutorDashboard() {
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               {conn.status === 'pending' && (
                 <>
-                  <button
-                    className="btn btn-primary btn-sm"
+                  <button className="btn btn-primary btn-sm"
                     disabled={actionLoading === conn.id}
-                    onClick={() => handleConnectionAction(conn.id, 'accept')}
-                  >
+                    onClick={() => handleConnectionAction(conn.id, 'accept')}>
                     Accept
                   </button>
-                  <button
-                    className="btn btn-danger btn-sm"
+                  <button className="btn btn-danger btn-sm"
                     disabled={actionLoading === conn.id}
-                    onClick={() => handleConnectionAction(conn.id, 'decline')}
-                  >
+                    onClick={() => handleConnectionAction(conn.id, 'decline')}>
                     Decline
                   </button>
                 </>
               )}
               {conn.status === 'accepted' && (
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => navigate(`/messages/${conn.id}`)}
-                >
+                <button className="btn btn-secondary btn-sm"
+                  onClick={() => navigate(`/messages/${conn.id}`)}>
                   Open Chat
                 </button>
               )}
@@ -229,11 +205,11 @@ export default function TutorDashboard() {
         ))}
       </section>
 
+      {/* Profile Edit */}
       <section className="card" aria-labelledby="profile-section">
         <h2 id="profile-section" className="section-title">Edit Profile</h2>
         {profileError && <div className="alert alert-error" role="alert">{profileError}</div>}
         {profileSuccess && <div className="alert alert-success" role="alert">{profileSuccess}</div>}
-
         <form onSubmit={handleProfileSave}>
           <div className="form-group">
             <label htmlFor="institutionName">School / University Name</label>
@@ -250,7 +226,6 @@ export default function TutorDashboard() {
             <input id="hourlyRate" type="number" min="1" step="0.01" value={hourlyRate}
               onChange={(e) => setHourlyRate(e.target.value)} />
           </div>
-
           <fieldset style={{ border: '1px solid #e2e8f0', borderRadius: 4, padding: '1rem', marginBottom: '1rem' }}>
             <legend style={{ fontWeight: 600, padding: '0 0.5rem' }}>Subjects</legend>
             {availableSubjects.map((subj) => {
@@ -275,7 +250,6 @@ export default function TutorDashboard() {
               );
             })}
           </fieldset>
-
           <fieldset style={{ border: '1px solid #e2e8f0', borderRadius: 4, padding: '1rem', marginBottom: '1rem' }}>
             <legend style={{ fontWeight: 600, padding: '0 0.5rem' }}>Year Groups</legend>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
@@ -288,19 +262,18 @@ export default function TutorDashboard() {
               ))}
             </div>
           </fieldset>
-
           <button type="submit" className="btn btn-primary" disabled={saving}>
             {saving ? 'Saving…' : 'Save Profile'}
           </button>
         </form>
       </section>
 
+      {/* Availability */}
       <section className="card" aria-labelledby="avail-section">
         <h2 id="avail-section" className="section-title">Availability</h2>
         <p className="text-muted mb-2">Check the boxes for times you are available to tutor.</p>
         {availError && <div className="alert alert-error" role="alert">{availError}</div>}
         {availSuccess && <div className="alert alert-success" role="alert">{availSuccess}</div>}
-
         <form onSubmit={handleAvailSave}>
           <div className="avail-grid">
             <table>
