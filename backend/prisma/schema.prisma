@@ -110,6 +110,7 @@ model TutorProfile {
   paymentRequests PaymentRequest[]
   payments        Payment[]         @relation("TutorPayments")
   reviews         Review[]
+  posts           Post[]
 
   @@map("tutor_profiles")
 }
@@ -274,4 +275,16 @@ model AuditLog {
   adminUser User @relation("AuditLogAdmin", fields: [adminUserId], references: [id])
 
   @@map("audit_logs")
+}
+
+model Post {
+  id             String       @id @default(uuid())
+  tutorProfileId String
+  content        String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  tutorProfile TutorProfile @relation(fields: [tutorProfileId], references: [id])
+
+  @@map("posts")
 }

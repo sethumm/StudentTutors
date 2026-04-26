@@ -8,6 +8,7 @@ import messagesRouter from './routes/messages.routes';
 import paymentRequestsRouter from './routes/payment-requests.routes';
 import paymentsRouter from './routes/payments.routes';
 import webhooksRouter from './routes/webhooks.routes';
+import postsRouter from './routes/posts.routes';
 import reviewsRouter from './routes/reviews.routes';
 import adminRouter from './routes/admin.routes';
 import customersRouter from './routes/customers.routes';
@@ -46,6 +47,7 @@ app.use('/api/payments', paymentsRouter);
 // Webhooks router uses express.raw() internally for the stripe route
 app.use('/api/webhooks', webhooksRouter);
 app.use('/api/reviews', reviewsRouter);
+app.use('/api/posts', postsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/customers', customersRouter);
 
