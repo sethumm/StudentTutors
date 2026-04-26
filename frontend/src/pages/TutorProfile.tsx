@@ -60,7 +60,7 @@ export default function TutorProfile() {
 
   // Review form
   const [canReview, setCanReview] = useState(false);
-  const [existingReview, setExistingReview] = useState<Review | null>(null);
+  const [existingReview, _setExistingReview] = useState<Review | null>(null);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewText, setReviewText] = useState('');
   const [reviewError, setReviewError] = useState('');

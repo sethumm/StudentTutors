@@ -1,19 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { api } from '../lib/api';
 
-const SUBJECTS = [
-  'Mathematics', 'English Language', 'English Literature', 'Biology', 'Chemistry',
-  'Physics', 'History', 'Geography', 'French', 'Spanish', 'German',
-  'Computer Science', 'Economics', 'Business Studies', 'Psychology', 'Sociology', 'Art',
-];
-
 const YEAR_GROUPS = [7, 8, 9, 10, 11, 12, 13];
 
-interface SubjectEntry {
+interface SubjectOption {
+  id: string;
   name: string;
-  level: 'gcse' | 'a-level' | 'both';
+}
+
+interface SubjectEntry {
+  subjectId: string;
+  level: 'gcse' | 'a_level' | 'both';
 }
 
 export default function TutorRegister() {
@@ -23,32 +22,39 @@ export default function TutorRegister() {
     email: '',
     password: '',
     phone: '',
-    educationLevel: 'a-level' as 'a-level' | 'university',
+    educationLevel: 'a_level' as 'a_level' | 'university',
     institutionName: '',
     bio: '',
     hourlyRate: '',
   });
+  const [availableSubjects, setAvailableSubjects] = useState<SubjectOption[]>([]);
   const [subjects, setSubjects] = useState<SubjectEntry[]>([]);
   const [yearGroups, setYearGroups] = useState<number[]>([]);
-  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    api.get<{ subjects: SubjectOption[] }>('/api/subjects')
+      .then((data) => setAvailableSubjects(data.subjects ?? []))
+      .catch(() => setAvailableSubjects([]));
+  }, []);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
-  function toggleSubject(name: string) {
+  function toggleSubject(subjectId: string) {
     setSubjects((prev) => {
-      const exists = prev.find((s) => s.name === name);
-      if (exists) return prev.filter((s) => s.name !== name);
-      return [...prev, { name, level: 'gcse' }];
+      const exists = prev.find((s) => s.subjectId === subjectId);
+      if (exists) return prev.filter((s) => s.subjectId !== subjectId);
+      return [...prev, { subjectId, level: 'gcse' as const }];
     });
   }
 
-  function setSubjectLevel(name: string, level: 'gcse' | 'a-level' | 'both') {
-    setSubjects((prev) => prev.map((s) => s.name === name ? { ...s, level } : s));
+  function setSubjectLevel(subjectId: string, level: 'gcse' | 'a_level' | 'both') {
+    setSubjects((prev) => prev.map((s) => s.subjectId === subjectId ? { ...s, level } : s));
   }
 
   function toggleYearGroup(yg: number) {
@@ -61,7 +67,7 @@ export default function TutorRegister() {
     e.preventDefault();
     setError('');
 
-    if (!acceptTerms) { setError('You must accept the Terms of Service and Privacy Policy.'); return; }
+    if (!acceptedTerms) { setError('You must accept the Terms of Service and Privacy Policy.'); return; }
     if (subjects.length === 0) { setError('Please select at least one subject.'); return; }
     if (yearGroups.length === 0) { setError('Please select at least one year group.'); return; }
 
@@ -72,13 +78,14 @@ export default function TutorRegister() {
         hourlyRate: parseFloat(form.hourlyRate),
         subjects,
         yearGroups,
-        acceptTerms,
+        acceptedTerms,
       });
       setSuccess('Registration successful! Please check your email to verify your account.');
       setTimeout(() => navigate('/login'), 3000);
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      setError(e?.response?.data?.message ?? 'Registration failed. Please try again.');
+      const e = err as { response?: { data?: { error?: string; details?: { message: string }[] } } };
+      const details = e?.response?.data?.details;
+      setError(details ? details.map((d) => d.message).join(', ') : (e?.response?.data?.error ?? 'Registration failed. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -120,7 +127,7 @@ export default function TutorRegister() {
             <label htmlFor="educationLevel">Education Level *</label>
             <select id="educationLevel" name="educationLevel" value={form.educationLevel}
               onChange={handleChange} required>
-              <option value="a-level">A-Level</option>
+              <option value="a_level">A-Level</option>
               <option value="university">University</option>
             </select>
           </div>
@@ -146,27 +153,23 @@ export default function TutorRegister() {
           {/* Subjects */}
           <fieldset style={{ border: '1px solid #e2e8f0', borderRadius: 4, padding: '1rem', marginBottom: '1rem' }}>
             <legend style={{ fontWeight: 600, padding: '0 0.5rem' }}>Subjects * (select at least one)</legend>
-            {SUBJECTS.map((subj) => {
-              const entry = subjects.find((s) => s.name === subj);
+            {availableSubjects.length === 0 && (
+              <p className="text-muted" style={{ fontSize: '0.85rem' }}>Loading subjects...</p>
+            )}
+            {availableSubjects.map((subj) => {
+              const entry = subjects.find((s) => s.subjectId === subj.id);
               return (
-                <div key={subj} style={{ marginBottom: '0.5rem' }}>
+                <div key={subj.id} style={{ marginBottom: '0.5rem' }}>
                   <div className="form-check">
-                    <input
-                      type="checkbox"
-                      id={`subj-${subj}`}
-                      checked={!!entry}
-                      onChange={() => toggleSubject(subj)}
-                    />
-                    <label htmlFor={`subj-${subj}`}>{subj}</label>
+                    <input type="checkbox" id={`subj-${subj.id}`}
+                      checked={!!entry} onChange={() => toggleSubject(subj.id)} />
+                    <label htmlFor={`subj-${subj.id}`}>{subj.name}</label>
                     {entry && (
-                      <select
-                        aria-label={`Level for ${subj}`}
-                        value={entry.level}
-                        onChange={(e) => setSubjectLevel(subj, e.target.value as 'gcse' | 'a-level' | 'both')}
-                        style={{ marginLeft: '0.5rem', padding: '0.2rem 0.4rem', fontSize: '0.85rem' }}
-                      >
+                      <select aria-label={`Level for ${subj.name}`} value={entry.level}
+                        onChange={(e) => setSubjectLevel(subj.id, e.target.value as 'gcse' | 'a_level' | 'both')}
+                        style={{ marginLeft: '0.5rem', padding: '0.2rem 0.4rem', fontSize: '0.85rem' }}>
                         <option value="gcse">GCSE</option>
-                        <option value="a-level">A-Level</option>
+                        <option value="a_level">A-Level</option>
                         <option value="both">Both</option>
                       </select>
                     )}
@@ -182,12 +185,8 @@ export default function TutorRegister() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
               {YEAR_GROUPS.map((yg) => (
                 <div key={yg} className="form-check">
-                  <input
-                    type="checkbox"
-                    id={`yg-${yg}`}
-                    checked={yearGroups.includes(yg)}
-                    onChange={() => toggleYearGroup(yg)}
-                  />
+                  <input type="checkbox" id={`yg-${yg}`}
+                    checked={yearGroups.includes(yg)} onChange={() => toggleYearGroup(yg)} />
                   <label htmlFor={`yg-${yg}`}>Year {yg}</label>
                 </div>
               ))}
@@ -195,14 +194,9 @@ export default function TutorRegister() {
           </fieldset>
 
           <div className="form-check" style={{ marginBottom: '1rem' }}>
-            <input
-              type="checkbox"
-              id="acceptTerms"
-              checked={acceptTerms}
-              onChange={(e) => setAcceptTerms(e.target.checked)}
-              required
-            />
-            <label htmlFor="acceptTerms">
+            <input type="checkbox" id="acceptedTerms" checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)} required />
+            <label htmlFor="acceptedTerms">
               I accept the <Link to="/terms">Terms of Service</Link> and <Link to="/privacy">Privacy Policy</Link> *
             </label>
           </div>

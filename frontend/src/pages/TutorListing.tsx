@@ -13,7 +13,7 @@ interface TutorSummary {
   hourlyRate: number;
   subjects: { name: string; level: string }[];
   yearGroups: number[];
-  availabilityDays: number[];
+  availability: { daysAvailable: number[] };
   averageRating: number | null;
 }
 
@@ -78,7 +78,7 @@ export default function TutorListing() {
 
       <div className="grid-2">
         {tutors.map((tutor) => {
-          const dayNames = tutor.availabilityDays.map((d) => DAYS[d]).join(', ');
+          const dayNames = (tutor.availability?.daysAvailable ?? []).map((d) => DAYS[d]).join(', ');
           return (
             <Link key={tutor.id} to={`/tutors/${tutor.id}`} className="card card-link">
               <div className="flex-between">

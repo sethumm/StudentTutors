@@ -15,7 +15,7 @@ interface TutorResult {
   bio: string;
   subjects: { name: string; level: string }[];
   yearGroups: number[];
-  availabilityDays: number[];
+  availability: { daysAvailable: number[] };
   averageRating: number | null;
   reviewCount: number;
 }
@@ -34,7 +34,7 @@ function Stars({ rating }: { rating: number | null }) {
 }
 
 function TutorCard({ tutor }: { tutor: TutorResult }) {
-  const dayNames = tutor.availabilityDays.map((d) => DAYS[d]).join(', ');
+  const dayNames = (tutor.availability?.daysAvailable ?? []).map((d) => DAYS[d]).join(', ');
   return (
     <Link to={`/tutors/${tutor.id}`} className="card card-link">
       <div className="flex-between">

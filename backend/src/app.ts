@@ -29,6 +29,13 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
+// Subjects endpoint (public)
+app.get('/api/subjects', async (_req, res) => {
+  const { default: prisma } = await import('./lib/prisma');
+  const subjects = await prisma.subject.findMany({ orderBy: { name: 'asc' } });
+  res.json({ subjects });
+});
+
 // Routers
 app.use('/api/auth', authRouter);
 app.use('/api/tutors', tutorsRouter);

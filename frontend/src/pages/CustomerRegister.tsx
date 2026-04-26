@@ -15,7 +15,7 @@ export default function CustomerRegister() {
     role: 'student' as 'student' | 'parent',
     yearGroup: '',
   });
-  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,7 +28,7 @@ export default function CustomerRegister() {
     e.preventDefault();
     setError('');
 
-    if (!acceptTerms) { setError('You must accept the Terms of Service and Privacy Policy.'); return; }
+    if (!acceptedTerms) { setError('You must accept the Terms of Service and Privacy Policy.'); return; }
     if (form.role === 'student' && !form.yearGroup) { setError('Please select your year group.'); return; }
 
     setLoading(true);
@@ -39,7 +39,7 @@ export default function CustomerRegister() {
         password: form.password,
         phone: form.phone,
         role: form.role,
-        acceptTerms,
+        acceptedTerms,
       };
       if (form.role === 'student') payload.yearGroup = parseInt(form.yearGroup);
 
@@ -47,8 +47,9 @@ export default function CustomerRegister() {
       setSuccess('Registration successful! Please check your email to confirm your account.');
       setTimeout(() => navigate('/login'), 3000);
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      setError(e?.response?.data?.message ?? 'Registration failed. Please try again.');
+      const e = err as { response?: { data?: { error?: string; details?: { message: string }[] } } };
+      const details = e?.response?.data?.details;
+      setError(details ? details.map((d) => d.message).join(', ') : (e?.response?.data?.error ?? 'Registration failed. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -108,14 +109,9 @@ export default function CustomerRegister() {
           )}
 
           <div className="form-check" style={{ marginBottom: '1rem' }}>
-            <input
-              type="checkbox"
-              id="acceptTerms"
-              checked={acceptTerms}
-              onChange={(e) => setAcceptTerms(e.target.checked)}
-              required
-            />
-            <label htmlFor="acceptTerms">
+            <input type="checkbox" id="acceptedTerms" checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)} required />
+            <label htmlFor="acceptedTerms">
               I accept the <Link to="/terms">Terms of Service</Link> and <Link to="/privacy">Privacy Policy</Link> *
             </label>
           </div>

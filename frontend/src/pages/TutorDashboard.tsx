@@ -1,38 +1,31 @@
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { api } from '../lib/api';
-import { useAuthStore } from '../store/auth.store';
 
-const SUBJECTS = [
-  'Mathematics', 'English Language', 'English Literature', 'Biology', 'Chemistry',
-  'Physics', 'History', 'Geography', 'French', 'Spanish', 'German',
-  'Computer Science', 'Economics', 'Business Studies', 'Psychology', 'Sociology', 'Art',
-];
 const YEAR_GROUPS = [7, 8, 9, 10, 11, 12, 13];
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const HOURS = Array.from({ length: 16 }, (_, i) => i + 6); // 6..21
+const HOURS = Array.from({ length: 16 }, (_, i) => i + 6);
 
-interface SubjectEntry { name: string; level: 'gcse' | 'a-level' | 'both'; }
+interface SubjectOption { id: string; name: string; }
+interface SubjectEntry { subjectId: string; level: 'gcse' | 'a_level' | 'both'; }
 interface AvailSlot { dayOfWeek: number; startHour: number; }
 
 interface TutorProfileData {
   id: string;
-  fullName: string;
-  educationLevel: string;
-  institutionName: string;
   bio: string;
-  hourlyRate: number;
-  subjects: SubjectEntry[];
+  hourlyRate: string;
+  institutionName: string;
+  subjects: { subjectId: string; subjectName: string; level: string }[];
   yearGroups: number[];
   availability: AvailSlot[];
 }
 
 export default function TutorDashboard() {
-  const { user } = useAuthStore();
   const [profileId, setProfileId] = useState('');
   const [bio, setBio] = useState('');
   const [hourlyRate, setHourlyRate] = useState('');
   const [institutionName, setInstitutionName] = useState('');
+  const [availableSubjects, setAvailableSubjects] = useState<SubjectOption[]>([]);
   const [subjects, setSubjects] = useState<SubjectEntry[]>([]);
   const [yearGroups, setYearGroups] = useState<number[]>([]);
   const [availability, setAvailability] = useState<Set<string>>(new Set());
@@ -45,34 +38,41 @@ export default function TutorDashboard() {
   const [savingAvail, setSavingAvail] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
-    api.get<TutorProfileData>(`/api/tutors/${user.id}`)
-      .then((data) => {
-        setProfileId(data.id);
-        setBio(data.bio ?? '');
-        setHourlyRate(String(data.hourlyRate ?? ''));
-        setInstitutionName(data.institutionName ?? '');
-        setSubjects(data.subjects ?? []);
-        setYearGroups(data.yearGroups ?? []);
-        const slots = new Set<string>(
-          (data.availability ?? []).map((a) => `${a.dayOfWeek}-${a.startHour}`)
+    Promise.all([
+      api.get<TutorProfileData>('/api/tutors/me'),
+      api.get<{ subjects: SubjectOption[] }>('/api/subjects'),
+    ])
+      .then(([profileData, subjectData]) => {
+        setProfileId(profileData.id);
+        setBio(profileData.bio ?? '');
+        setHourlyRate(String(profileData.hourlyRate ?? ''));
+        setInstitutionName(profileData.institutionName ?? '');
+        setSubjects(
+          (profileData.subjects ?? []).map((s) => ({
+            subjectId: s.subjectId,
+            level: s.level as 'gcse' | 'a_level' | 'both',
+          }))
         );
-        setAvailability(slots);
+        setYearGroups(profileData.yearGroups ?? []);
+        setAvailability(
+          new Set((profileData.availability ?? []).map((a) => `${a.dayOfWeek}-${a.startHour}`))
+        );
+        setAvailableSubjects(subjectData.subjects ?? []);
       })
       .catch(() => setProfileError('Failed to load profile.'))
       .finally(() => setProfileLoading(false));
-  }, [user]);
+  }, []);
 
-  function toggleSubject(name: string) {
+  function toggleSubject(subjectId: string) {
     setSubjects((prev) => {
-      const exists = prev.find((s) => s.name === name);
-      if (exists) return prev.filter((s) => s.name !== name);
-      return [...prev, { name, level: 'gcse' }];
+      const exists = prev.find((s) => s.subjectId === subjectId);
+      if (exists) return prev.filter((s) => s.subjectId !== subjectId);
+      return [...prev, { subjectId, level: 'gcse' as const }];
     });
   }
 
-  function setSubjectLevel(name: string, level: 'gcse' | 'a-level' | 'both') {
-    setSubjects((prev) => prev.map((s) => s.name === name ? { ...s, level } : s));
+  function setSubjectLevel(subjectId: string, level: 'gcse' | 'a_level' | 'both') {
+    setSubjects((prev) => prev.map((s) => s.subjectId === subjectId ? { ...s, level } : s));
   }
 
   function toggleYearGroup(yg: number) {
@@ -99,8 +99,8 @@ export default function TutorDashboard() {
       });
       setProfileSuccess('Profile updated successfully.');
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      setProfileError(e?.response?.data?.message ?? 'Failed to save profile.');
+      const e = err as { response?: { data?: { error?: string } } };
+      setProfileError(e?.response?.data?.error ?? 'Failed to save profile.');
     } finally {
       setSaving(false);
     }
@@ -120,8 +120,8 @@ export default function TutorDashboard() {
       await api.put(`/api/tutors/${profileId}/availability`, { slots });
       setAvailSuccess('Availability saved successfully.');
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      setAvailError(e?.response?.data?.message ?? 'Failed to save availability.');
+      const e = err as { response?: { data?: { error?: string } } };
+      setAvailError(e?.response?.data?.error ?? 'Failed to save availability.');
     } finally {
       setSavingAvail(false);
     }
@@ -133,7 +133,6 @@ export default function TutorDashboard() {
     <Layout>
       <h1 className="page-title">Tutor Dashboard</h1>
 
-      {/* Profile Edit */}
       <section className="card" aria-labelledby="profile-section">
         <h2 id="profile-section" className="section-title">Edit Profile</h2>
         {profileError && <div className="alert alert-error" role="alert">{profileError}</div>}
@@ -145,36 +144,33 @@ export default function TutorDashboard() {
             <input id="institutionName" type="text" value={institutionName}
               onChange={(e) => setInstitutionName(e.target.value)} />
           </div>
-
           <div className="form-group">
             <label htmlFor="bio">Bio</label>
             <textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)}
               placeholder="Tell students about yourself…" />
           </div>
-
           <div className="form-group">
             <label htmlFor="hourlyRate">Hourly Rate (£)</label>
             <input id="hourlyRate" type="number" min="1" step="0.01" value={hourlyRate}
               onChange={(e) => setHourlyRate(e.target.value)} />
           </div>
 
-          {/* Subjects */}
           <fieldset style={{ border: '1px solid #e2e8f0', borderRadius: 4, padding: '1rem', marginBottom: '1rem' }}>
             <legend style={{ fontWeight: 600, padding: '0 0.5rem' }}>Subjects</legend>
-            {SUBJECTS.map((subj) => {
-              const entry = subjects.find((s) => s.name === subj);
+            {availableSubjects.map((subj) => {
+              const entry = subjects.find((s) => s.subjectId === subj.id);
               return (
-                <div key={subj} style={{ marginBottom: '0.4rem' }}>
+                <div key={subj.id} style={{ marginBottom: '0.4rem' }}>
                   <div className="form-check">
-                    <input type="checkbox" id={`subj-${subj}`} checked={!!entry}
-                      onChange={() => toggleSubject(subj)} />
-                    <label htmlFor={`subj-${subj}`}>{subj}</label>
+                    <input type="checkbox" id={`subj-${subj.id}`} checked={!!entry}
+                      onChange={() => toggleSubject(subj.id)} />
+                    <label htmlFor={`subj-${subj.id}`}>{subj.name}</label>
                     {entry && (
-                      <select aria-label={`Level for ${subj}`} value={entry.level}
-                        onChange={(e) => setSubjectLevel(subj, e.target.value as 'gcse' | 'a-level' | 'both')}
+                      <select aria-label={`Level for ${subj.name}`} value={entry.level}
+                        onChange={(e) => setSubjectLevel(subj.id, e.target.value as 'gcse' | 'a_level' | 'both')}
                         style={{ marginLeft: '0.5rem', padding: '0.2rem 0.4rem', fontSize: '0.85rem' }}>
                         <option value="gcse">GCSE</option>
-                        <option value="a-level">A-Level</option>
+                        <option value="a_level">A-Level</option>
                         <option value="both">Both</option>
                       </select>
                     )}
@@ -184,7 +180,6 @@ export default function TutorDashboard() {
             })}
           </fieldset>
 
-          {/* Year Groups */}
           <fieldset style={{ border: '1px solid #e2e8f0', borderRadius: 4, padding: '1rem', marginBottom: '1rem' }}>
             <legend style={{ fontWeight: 600, padding: '0 0.5rem' }}>Year Groups</legend>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
@@ -204,7 +199,6 @@ export default function TutorDashboard() {
         </form>
       </section>
 
-      {/* Availability Grid */}
       <section className="card" aria-labelledby="avail-section">
         <h2 id="avail-section" className="section-title">Availability</h2>
         <p className="text-muted mb-2">Check the boxes for times you are available to tutor.</p>
@@ -224,25 +218,18 @@ export default function TutorDashboard() {
                 {HOURS.map((h) => (
                   <tr key={h}>
                     <td>{String(h).padStart(2, '0')}:00</td>
-                    {DAYS.map((d, di) => {
-                      const key = `${di}-${h}`;
-                      return (
-                        <td key={di}>
-                          <input
-                            type="checkbox"
-                            checked={availability.has(key)}
-                            onChange={() => toggleSlot(di, h)}
-                            aria-label={`${d} ${String(h).padStart(2, '0')}:00`}
-                          />
-                        </td>
-                      );
-                    })}
+                    {DAYS.map((d, di) => (
+                      <td key={di}>
+                        <input type="checkbox" checked={availability.has(`${di}-${h}`)}
+                          onChange={() => toggleSlot(di, h)}
+                          aria-label={`${d} ${String(h).padStart(2, '0')}:00`} />
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-
           <button type="submit" className="btn btn-primary mt-2" disabled={savingAvail}>
             {savingAvail ? 'Saving…' : 'Save Availability'}
           </button>
