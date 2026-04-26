@@ -89,7 +89,7 @@ function LandingPage() {
             Subjects available
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'center' }}>
-            {['Maths', 'English', 'Biology', 'Chemistry', 'Physics', 'History', 'Geography',
+            {['11 Plus (11+)', 'Maths', 'English', 'Biology', 'Chemistry', 'Physics', 'History', 'Geography',
               'French', 'Spanish', 'Computer Science', 'Economics', 'Psychology'].map((s) => (
               <span key={s} style={{
                 padding: '0.3rem 0.9rem', borderRadius: 999, background: '#e8f0fe',
