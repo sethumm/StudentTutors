@@ -96,6 +96,7 @@ function formatListingEntry(profile: {
     educationLevel: profile.educationLevel,
     institutionName: profile.institutionName,
     hourlyRate: profile.hourlyRate.toString(),
+    location: (profile as { location?: string | null }).location ?? null,
     subjects: profile.subjects.map((s) => ({
       name: s.subject.name,
       level: s.level,
@@ -144,15 +145,11 @@ export async function listTutors(req: Request, res: Response): Promise<void> {
 // ─── Task 6.3: GET /api/tutors/search ─────────────────────────────────────────
 
 export async function searchTutors(req: Request, res: Response): Promise<void> {
-  const { subject, yearGroup, day } = req.query;
-
-  if (!subject || typeof subject !== 'string' || subject.trim() === '') {
-    res.status(400).json({ error: 'subject query parameter is required' });
-    return;
-  }
+  const { subject, yearGroup, day, minRating, location } = req.query;
 
   const yearGroupInt = yearGroup !== undefined ? parseInt(yearGroup as string) : undefined;
   const dayInt = day !== undefined ? parseInt(day as string) : undefined;
+  const minRatingFloat = minRating !== undefined ? parseFloat(minRating as string) : undefined;
 
   if (yearGroupInt !== undefined && (isNaN(yearGroupInt) || yearGroupInt < 7 || yearGroupInt > 13)) {
     res.status(400).json({ error: 'yearGroup must be an integer between 7 and 13' });
@@ -166,18 +163,14 @@ export async function searchTutors(req: Request, res: Response): Promise<void> {
 
   const where: Record<string, unknown> = {
     isActive: true,
-    user: {
-      emailVerified: true,
-      deletedAt: null,
-    },
-    subjects: {
-      some: {
-        subject: {
-          name: { equals: subject.trim(), mode: 'insensitive' },
-        },
-      },
-    },
+    user: { emailVerified: true, deletedAt: null },
   };
+
+  if (subject && typeof subject === 'string' && subject.trim()) {
+    where.subjects = {
+      some: { subject: { name: { contains: subject.trim(), mode: 'insensitive' } } },
+    };
+  }
 
   if (yearGroupInt !== undefined) {
     where.yearGroups = { some: { yearGroup: yearGroupInt } };
@@ -187,11 +180,25 @@ export async function searchTutors(req: Request, res: Response): Promise<void> {
     where.availability = { some: { dayOfWeek: dayInt } };
   }
 
-  const profiles = await prisma.tutorProfile.findMany({
+  if (location && typeof location === 'string' && location.trim()) {
+    where.location = { contains: location.trim(), mode: 'insensitive' };
+  }
+
+  let profiles = await prisma.tutorProfile.findMany({
     where,
     orderBy: { createdAt: 'desc' },
     include: TUTOR_LIST_INCLUDE,
   });
+
+  // Filter by minimum rating in memory (requires computing average)
+  if (minRatingFloat !== undefined && !isNaN(minRatingFloat)) {
+    profiles = profiles.filter((p) => {
+      const ratings = p.reviews.map((r: { rating: number }) => r.rating);
+      if (ratings.length === 0) return false;
+      const avg = ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length;
+      return avg >= minRatingFloat;
+    });
+  }
 
   if (profiles.length === 0) {
     res.status(200).json({

@@ -26,6 +26,7 @@ export default function TutorRegister() {
     institutionName: '',
     bio: '',
     hourlyRate: '',
+    location: '',
   });
   const [availableSubjects, setAvailableSubjects] = useState<SubjectOption[]>([]);
   const [subjects, setSubjects] = useState<SubjectEntry[]>([]);

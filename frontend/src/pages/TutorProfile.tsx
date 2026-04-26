@@ -14,7 +14,7 @@ interface TutorProfileData {
   institutionName: string;
   bio: string;
   hourlyRate: number;
-  subjects: { name: string; level: string }[];
+  subjects: { subjectId: string; subjectName: string; level: string }[];
   yearGroups: number[];
   availability: { dayOfWeek: number; startHour: number }[];
   averageRating: number | null;
@@ -105,11 +105,13 @@ export default function TutorProfile() {
     setConnectError('');
     setConnectLoading(true);
     try {
-      const data = await api.post<{ connection: Connection }>('/api/connections', { tutorProfileId: id });
-      setConnection(data.connection);
+      const data = await api.post<Connection>('/api/connections', { tutorProfileId: id });
+      setConnection(data);
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      setConnectError(e?.response?.data?.message ?? 'Failed to send connection request.');
+      const e = err as { response?: { data?: { error?: string; daysRemaining?: number } } };
+      const msg = e?.response?.data?.error ?? 'Failed to send connection request.';
+      const days = e?.response?.data?.daysRemaining;
+      setConnectError(days ? `${msg} Try again in ${days} days.` : msg);
     } finally {
       setConnectLoading(false);
     }
@@ -216,7 +218,7 @@ export default function TutorProfile() {
           <h2 className="section-title">Subjects</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             {tutor.subjects.map((s) => (
-              <span key={s.name} className="badge badge-blue">{s.name} ({s.level})</span>
+              <span key={s.subjectName} className="badge badge-blue">{s.subjectName} ({s.level})</span>
             ))}
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { api } from '../lib/api';
 
@@ -9,6 +10,12 @@ const HOURS = Array.from({ length: 16 }, (_, i) => i + 6);
 interface SubjectOption { id: string; name: string; }
 interface SubjectEntry { subjectId: string; level: 'gcse' | 'a_level' | 'both'; }
 interface AvailSlot { dayOfWeek: number; startHour: number; }
+interface ConnectionRequest {
+  id: string;
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt: string;
+  customer: { fullName: string };
+}
 
 interface TutorProfileData {
   id: string;
@@ -19,6 +26,26 @@ interface TutorProfileData {
   yearGroups: number[];
   availability: AvailSlot[];
 }
+
+export default function TutorDashboard() {
+  const navigate = useNavigate();
+  const [profileId, setProfileId] = useState('');
+  const [bio, setBio] = useState('');
+  const [hourlyRate, setHourlyRate] = useState('');
+  const [institutionName, setInstitutionName] = useState('');
+  const [availableSubjects, setAvailableSubjects] = useState<SubjectOption[]>([]);
+  const [subjects, setSubjects] = useState<SubjectEntry[]>([]);
+  const [yearGroups, setYearGroups] = useState<number[]>([]);
+  const [availability, setAvailability] = useState<Set<string>>(new Set());
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState('');
+  const [availSuccess, setAvailSuccess] = useState('');
+  const [availError, setAvailError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [savingAvail, setSavingAvail] = useState(false);
+  const [connections, setConnections] = useState<ConnectionRequest[]>([]);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
 export default function TutorDashboard() {
   const [profileId, setProfileId] = useState('');
@@ -41,8 +68,9 @@ export default function TutorDashboard() {
     Promise.all([
       api.get<TutorProfileData>('/api/tutors/me'),
       api.get<{ subjects: SubjectOption[] }>('/api/subjects'),
+      api.get<{ connections: ConnectionRequest[] }>('/api/connections'),
     ])
-      .then(([profileData, subjectData]) => {
+      .then(([profileData, subjectData, connData]) => {
         setProfileId(profileData.id);
         setBio(profileData.bio ?? '');
         setHourlyRate(String(profileData.hourlyRate ?? ''));
@@ -58,6 +86,7 @@ export default function TutorDashboard() {
           new Set((profileData.availability ?? []).map((a) => `${a.dayOfWeek}-${a.startHour}`))
         );
         setAvailableSubjects(subjectData.subjects ?? []);
+        setConnections(connData.connections ?? []);
       })
       .catch(() => setProfileError('Failed to load profile.'))
       .finally(() => setProfileLoading(false));
@@ -86,6 +115,20 @@ export default function TutorDashboard() {
       if (next.has(key)) next.delete(key); else next.add(key);
       return next;
     });
+  }
+
+  async function handleConnectionAction(connectionId: string, action: 'accept' | 'decline') {
+    setActionLoading(connectionId);
+    try {
+      await api.patch(`/api/connections/${connectionId}`, { action });
+      setConnections((prev) => prev.map((c) =>
+        c.id === connectionId ? { ...c, status: action === 'accept' ? 'accepted' : 'declined' } : c
+      ));
+    } catch {
+      // ignore
+    } finally {
+      setActionLoading(null);
+    }
   }
 
   async function handleProfileSave(e: React.FormEvent) {
@@ -132,6 +175,59 @@ export default function TutorDashboard() {
   return (
     <Layout>
       <h1 className="page-title">Tutor Dashboard</h1>
+
+      {/* Connection Requests */}
+      <section className="card" aria-labelledby="connections-section" style={{ marginBottom: '1.5rem' }}>
+        <h2 id="connections-section" className="section-title">Connection Requests</h2>
+        {connections.length === 0 && <p className="text-muted">No connection requests yet.</p>}
+        {connections.map((conn) => (
+          <div key={conn.id} style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '0.75rem 0', borderBottom: '1px solid #e2e8f0',
+          }}>
+            <div>
+              <strong>{conn.customer.fullName}</strong>
+              <span className={`badge ml-2 ${
+                conn.status === 'pending' ? 'badge-yellow' :
+                conn.status === 'accepted' ? 'badge-green' : 'badge-red'
+              }`} style={{ marginLeft: '0.5rem' }}>
+                {conn.status}
+              </span>
+              <p className="text-muted" style={{ fontSize: '0.8rem', margin: 0 }}>
+                {new Date(conn.createdAt).toLocaleDateString('en-GB')}
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {conn.status === 'pending' && (
+                <>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    disabled={actionLoading === conn.id}
+                    onClick={() => handleConnectionAction(conn.id, 'accept')}
+                  >
+                    Accept
+                  </button>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    disabled={actionLoading === conn.id}
+                    onClick={() => handleConnectionAction(conn.id, 'decline')}
+                  >
+                    Decline
+                  </button>
+                </>
+              )}
+              {conn.status === 'accepted' && (
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => navigate(`/messages/${conn.id}`)}
+                >
+                  Open Chat
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </section>
 
       <section className="card" aria-labelledby="profile-section">
         <h2 id="profile-section" className="section-title">Edit Profile</h2>
