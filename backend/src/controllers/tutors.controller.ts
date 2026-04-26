@@ -167,8 +167,27 @@ export async function searchTutors(req: Request, res: Response): Promise<void> {
   };
 
   if (subject && typeof subject === 'string' && subject.trim()) {
+    const searchTerm = subject.trim();
+
+    // Build synonym list for common abbreviations
+    const synonyms: string[] = [searchTerm];
+    const lower = searchTerm.toLowerCase();
+    if (lower === 'maths' || lower === 'math') {
+      synonyms.push('Mathematics');
+    } else if (lower === 'mathematics') {
+      synonyms.push('Maths', 'Math');
+    } else if (lower === 'english') {
+      synonyms.push('English Language', 'English Literature');
+    } else if (lower === '11+' || lower === '11 plus' || lower === 'eleven plus') {
+      synonyms.push('11 Plus (11+)', '11+', 'Eleven Plus');
+    }
+
     where.subjects = {
-      some: { subject: { name: { contains: subject.trim(), mode: 'insensitive' } } },
+      some: {
+        subject: {
+          OR: synonyms.map((s) => ({ name: { contains: s, mode: 'insensitive' } })),
+        },
+      },
     };
   }
 

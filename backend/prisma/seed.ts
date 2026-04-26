@@ -6,6 +6,7 @@ const subjects: { name: string; curriculum: Curriculum }[] = [
   // Core subjects - available at both GCSE and A-Level
   { name: 'Mathematics', curriculum: 'both' },
   { name: 'Further Mathematics', curriculum: 'a_level' },
+  { name: '11 Plus (11+)', curriculum: 'gcse' },
   { name: 'English Language', curriculum: 'both' },
   { name: 'English Literature', curriculum: 'both' },
   { name: 'Biology', curriculum: 'both' },
