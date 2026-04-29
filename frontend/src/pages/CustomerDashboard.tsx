@@ -15,7 +15,7 @@ interface Payment {
   currency: string;
   status: string;
   createdAt: string;
-  tutor: { fullName: string };
+  tutorProfile: { fullName: string };
 }
 
 export default function CustomerDashboard() {
@@ -53,25 +53,17 @@ export default function CustomerDashboard() {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>Tutor</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
+                <tr><th>Tutor</th><th>Status</th><th>Action</th></tr>
               </thead>
               <tbody>
                 {connections.map((c) => (
                   <tr key={c.id}>
-                    <td>
-                      <Link to={`/tutors/${c.tutor?.id}`}>{c.tutor?.fullName ?? '—'}</Link>
-                    </td>
+                    <td><Link to={`/tutors/${c.tutor?.id}`}>{c.tutor?.fullName ?? '—'}</Link></td>
                     <td>
                       <span className={`badge ${
                         c.status === 'accepted' ? 'badge-green' :
                         c.status === 'pending' ? 'badge-yellow' : 'badge-red'
-                      }`}>
-                        {c.status}
-                      </span>
+                      }`}>{c.status}</span>
                     </td>
                     <td>
                       {c.status === 'accepted' && (
@@ -95,18 +87,13 @@ export default function CustomerDashboard() {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>Tutor</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                </tr>
+                <tr><th>Tutor</th><th>Amount</th><th>Status</th><th>Date</th></tr>
               </thead>
               <tbody>
                 {payments.map((p) => (
                   <tr key={p.id}>
-                    <td>{p.tutor?.fullName ?? '—'}</td>
-                    <td>£{(p.amount / 100).toFixed(2)}</td>
+                    <td>{p.tutorProfile?.fullName ?? '—'}</td>
+                    <td>£{Number(p.amount).toFixed(2)}</td>
                     <td>
                       <span className={`badge ${p.status === 'completed' ? 'badge-green' : 'badge-yellow'}`}>
                         {p.status}
