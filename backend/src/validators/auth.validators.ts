@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 const subjectSchema = z.object({
-  subjectId: z.string().uuid('subjectId must be a valid UUID'),
+  subjectId: z.string().min(1, 'subjectId is required'),
   level: z.enum(['gcse', 'a_level', 'both'], {
     errorMap: () => ({ message: 'level must be gcse, a_level, or both' }),
   }),

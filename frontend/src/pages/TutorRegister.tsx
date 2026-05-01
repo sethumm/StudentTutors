@@ -1,9 +1,42 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { api } from '../lib/api';
 
 const YEAR_GROUPS = [7, 8, 9, 10, 11, 12, 13];
+
+// Hardcoded subject list — avoids dependency on /api/subjects during registration
+const STATIC_SUBJECTS = [
+  '11 Plus (11+)',
+  'Mathematics',
+  'Further Mathematics',
+  'English Language',
+  'English Literature',
+  'Biology',
+  'Chemistry',
+  'Physics',
+  'History',
+  'Geography',
+  'French',
+  'Spanish',
+  'German',
+  'Computer Science',
+  'Economics',
+  'Business Studies',
+  'Psychology',
+  'Sociology',
+  'Art',
+  'Religious Studies',
+  'Music',
+  'Drama',
+  'Physical Education',
+  'Design and Technology',
+  'Media Studies',
+  'Law',
+  'Politics',
+  'Accounting',
+  'Latin',
+];
 
 interface SubjectOption {
   id: string;
@@ -28,7 +61,9 @@ export default function TutorRegister() {
     hourlyRate: '',
     location: '',
   });
-  const [availableSubjects, setAvailableSubjects] = useState<SubjectOption[]>([]);
+  const [availableSubjects, setAvailableSubjects] = useState<SubjectOption[]>(
+    STATIC_SUBJECTS.map((name) => ({ id: name, name }))
+  );
   const [subjects, setSubjects] = useState<SubjectEntry[]>([]);
   const [yearGroups, setYearGroups] = useState<number[]>([]);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -36,11 +71,16 @@ export default function TutorRegister() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  // Try to load real subject IDs from API, fall back to static list
+  useState(() => {
     api.get<{ subjects: SubjectOption[] }>('/api/subjects')
-      .then((data) => setAvailableSubjects(data.subjects ?? []))
-      .catch(() => setAvailableSubjects([]));
-  }, []);
+      .then((data) => {
+        if (data.subjects && data.subjects.length > 0) {
+          setAvailableSubjects(data.subjects);
+        }
+      })
+      .catch(() => { /* keep static list */ });
+  });
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });

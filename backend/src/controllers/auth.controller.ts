@@ -62,6 +62,20 @@ export async function registerTutor(req: Request, res: Response): Promise<void> 
       },
     });
 
+    // Resolve subject IDs — subjectId may be a UUID or a subject name
+    const resolvedSubjects = await Promise.all(
+      body.subjects.map(async (s) => {
+        // Check if it looks like a UUID
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.subjectId);
+        if (isUuid) return { subjectId: s.subjectId, level: s.level };
+        // Look up by name
+        const subject = await tx.subject.findFirst({ where: { name: { equals: s.subjectId, mode: 'insensitive' } } });
+        if (!subject) return null;
+        return { subjectId: subject.id, level: s.level };
+      })
+    );
+    const validSubjects = resolvedSubjects.filter((s): s is { subjectId: string; level: string } => s !== null);
+
     await tx.tutorProfile.create({
       data: {
         userId: user.id,
@@ -71,9 +85,9 @@ export async function registerTutor(req: Request, res: Response): Promise<void> 
         bio: body.bio,
         hourlyRate: body.hourlyRate,
         subjects: {
-          create: body.subjects.map((s) => ({
+          create: validSubjects.map((s) => ({
             subjectId: s.subjectId,
-            level: s.level,
+            level: s.level as 'gcse' | 'a_level' | 'both',
           })),
         },
         yearGroups: {
