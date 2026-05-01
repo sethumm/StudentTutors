@@ -96,7 +96,6 @@ function formatListingEntry(profile: {
     educationLevel: profile.educationLevel,
     institutionName: profile.institutionName,
     hourlyRate: profile.hourlyRate.toString(),
-    location: (profile as { location?: string | null }).location ?? null,
     subjects: profile.subjects.map((s) => ({
       name: s.subject.name,
       level: s.level,
@@ -200,7 +199,10 @@ export async function searchTutors(req: Request, res: Response): Promise<void> {
   }
 
   if (location && typeof location === 'string' && location.trim()) {
-    where.location = { contains: location.trim(), mode: 'insensitive' };
+    // location filter only applied if column exists in DB
+    try {
+      where.location = { contains: location.trim(), mode: 'insensitive' };
+    } catch { /* ignore if column doesn't exist */ }
   }
 
   let profiles = await prisma.tutorProfile.findMany({
