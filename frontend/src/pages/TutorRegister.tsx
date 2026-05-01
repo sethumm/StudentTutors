@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { api } from '../lib/api';
@@ -71,8 +71,8 @@ export default function TutorRegister() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Try to load real subject IDs from API, fall back to static list
-  useState(() => {
+  // Fetch real subject IDs from API; fall back to static list if unavailable
+  useEffect(() => {
     api.get<{ subjects: SubjectOption[] }>('/api/subjects')
       .then((data) => {
         if (data.subjects && data.subjects.length > 0) {
@@ -80,7 +80,7 @@ export default function TutorRegister() {
         }
       })
       .catch(() => { /* keep static list */ });
-  });
+  }, []);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
