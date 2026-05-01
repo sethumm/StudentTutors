@@ -14,16 +14,16 @@ function LandingPage() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 52,
         position: 'sticky', top: 0, zIndex: 100,
       }}>
-        <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0a66c2', letterSpacing: '-1px' }}>
+        <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0891b2', letterSpacing: '-1px' }}>
           TutorConnect
         </span>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <Link to="/login" style={{
-            padding: '0.4rem 1.1rem', borderRadius: 24, border: '1px solid #0a66c2',
-            color: '#0a66c2', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none',
+            padding: '0.4rem 1.1rem', borderRadius: 24, border: '1px solid #0891b2',
+            color: '#0891b2', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none',
           }}>Sign in</Link>
           <Link to="/register/customer" style={{
-            padding: '0.4rem 1.1rem', borderRadius: 24, background: '#0a66c2',
+            padding: '0.4rem 1.1rem', borderRadius: 24, background: '#0891b2',
             color: '#fff', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none',
           }}>Join now</Link>
         </div>
@@ -45,7 +45,7 @@ function LandingPage() {
           <div style={{ maxWidth: 380 }}>
             <Link to="/register/customer" style={{
               display: 'block', textAlign: 'center', padding: '0.75rem',
-              borderRadius: 24, background: '#0a66c2', color: '#fff',
+              borderRadius: 24, background: '#0891b2', color: '#fff',
               fontWeight: 600, fontSize: '1rem', textDecoration: 'none', marginBottom: '0.75rem',
             }}>Join as a Student / Parent</Link>
 
@@ -57,14 +57,14 @@ function LandingPage() {
 
             <p style={{ textAlign: 'center', color: '#666', fontSize: '0.9rem' }}>
               Already on TutorConnect?{' '}
-              <Link to="/login" style={{ color: '#0a66c2', fontWeight: 600 }}>Sign in</Link>
+              <Link to="/login" style={{ color: '#0891b2', fontWeight: 600 }}>Sign in</Link>
             </p>
           </div>
         </div>
 
         {/* Illustration panel */}
         <div style={{
-          flex: '1 1 300px', background: 'linear-gradient(135deg, #0a66c2 0%, #004182 100%)',
+          flex: '1 1 300px', background: 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)',
           borderRadius: 16, padding: '2.5rem', color: '#fff', minHeight: 320,
           display: 'flex', flexDirection: 'column', justifyContent: 'center',
         }}>
@@ -93,7 +93,7 @@ function LandingPage() {
               'French', 'Spanish', 'Computer Science', 'Economics', 'Psychology'].map((s) => (
               <span key={s} style={{
                 padding: '0.3rem 0.9rem', borderRadius: 999, background: '#e8f0fe',
-                color: '#0a66c2', fontSize: '0.85rem', fontWeight: 500,
+                color: '#0891b2', fontSize: '0.85rem', fontWeight: 500,
               }}>{s}</span>
             ))}
           </div>
@@ -190,7 +190,7 @@ function Feed() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 52,
         position: 'sticky', top: 0, zIndex: 100,
       }}>
-        <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0a66c2', letterSpacing: '-1px' }}>
+        <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0891b2', letterSpacing: '-1px' }}>
           TutorConnect
         </span>
         <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
@@ -209,8 +209,8 @@ function Feed() {
           )}
           <span style={{ color: '#333', fontSize: '0.85rem', fontWeight: 600 }}>{user?.email}</span>
           <button onClick={handleLogout} style={{
-            padding: '0.3rem 0.9rem', borderRadius: 24, border: '1px solid #0a66c2',
-            color: '#0a66c2', background: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
+            padding: '0.3rem 0.9rem', borderRadius: 24, border: '1px solid #0891b2',
+            color: '#0891b2', background: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
           }}>Sign out</button>
         </div>
       </nav>
@@ -220,10 +220,10 @@ function Feed() {
         {/* Left sidebar */}
         <div style={{ width: 220, flexShrink: 0 }}>
           <div style={{ background: '#fff', borderRadius: 8, border: '1px solid #e0e0e0', overflow: 'hidden', marginBottom: '1rem' }}>
-            <div style={{ background: 'linear-gradient(135deg, #0a66c2, #004182)', height: 56 }} />
+            <div style={{ background: 'linear-gradient(135deg, #0891b2, #0e7490)', height: 56 }} />
             <div style={{ padding: '0 1rem 1rem', textAlign: 'center' }}>
               <div style={{
-                width: 56, height: 56, borderRadius: '50%', background: '#0a66c2',
+                width: 56, height: 56, borderRadius: '50%', background: '#0891b2',
                 color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '1.4rem', fontWeight: 700, margin: '-28px auto 0.5rem', border: '2px solid #fff',
               }}>
@@ -234,14 +234,14 @@ function Feed() {
             </div>
             <div style={{ borderTop: '1px solid #e0e0e0', padding: '0.75rem 1rem' }}>
               {user?.role === 'tutor' && (
-                <Link to="/dashboard/tutor" style={{ display: 'block', color: '#0a66c2', fontSize: '0.85rem', textDecoration: 'none', padding: '0.3rem 0' }}>
+                <Link to="/dashboard/tutor" style={{ display: 'block', color: '#0891b2', fontSize: '0.85rem', textDecoration: 'none', padding: '0.3rem 0' }}>
                   Edit Profile
                 </Link>
               )}
-              <Link to="/tutors" style={{ display: 'block', color: '#0a66c2', fontSize: '0.85rem', textDecoration: 'none', padding: '0.3rem 0' }}>
+              <Link to="/tutors" style={{ display: 'block', color: '#0891b2', fontSize: '0.85rem', textDecoration: 'none', padding: '0.3rem 0' }}>
                 Find Tutors
               </Link>
-              <Link to="/messages" style={{ display: 'block', color: '#0a66c2', fontSize: '0.85rem', textDecoration: 'none', padding: '0.3rem 0' }}>
+              <Link to="/messages" style={{ display: 'block', color: '#0891b2', fontSize: '0.85rem', textDecoration: 'none', padding: '0.3rem 0' }}>
                 Messages
               </Link>
             </div>
@@ -257,7 +257,7 @@ function Feed() {
               <form onSubmit={handlePost}>
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                   <div style={{
-                    width: 40, height: 40, borderRadius: '50%', background: '#0a66c2',
+                    width: 40, height: 40, borderRadius: '50%', background: '#0891b2',
                     color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontWeight: 700, flexShrink: 0,
                   }}>
@@ -275,7 +275,7 @@ function Feed() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                   <button type="submit" disabled={posting || !newPost.trim()} style={{
-                    padding: '0.4rem 1.2rem', borderRadius: 24, background: '#0a66c2',
+                    padding: '0.4rem 1.2rem', borderRadius: 24, background: '#0891b2',
                     color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem',
                     opacity: (!newPost.trim() || posting) ? 0.5 : 1,
                   }}>
@@ -305,7 +305,7 @@ function Feed() {
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                 <Link to={`/tutors/${post.tutor.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
                   <div style={{
-                    width: 44, height: 44, borderRadius: '50%', background: '#0a66c2',
+                    width: 44, height: 44, borderRadius: '50%', background: '#0891b2',
                     color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontWeight: 700, fontSize: '1.1rem',
                   }}>
@@ -343,7 +343,7 @@ function Feed() {
                   </p>
                   <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #f0f0f0' }}>
                     <Link to={`/tutors/${post.tutor.id}`} style={{
-                      color: '#0a66c2', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none',
+                      color: '#0891b2', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none',
                     }}>
                       View Profile →
                     </Link>
@@ -379,12 +379,12 @@ function Feed() {
             </h3>
             <Link to="/tutors" style={{
               display: 'block', textAlign: 'center', padding: '0.5rem',
-              borderRadius: 24, background: '#0a66c2', color: '#fff',
+              borderRadius: 24, background: '#0891b2', color: '#fff',
               fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none', marginBottom: '0.5rem',
             }}>Browse All Tutors</Link>
             <Link to="/" style={{
               display: 'block', textAlign: 'center', padding: '0.5rem',
-              borderRadius: 24, border: '1px solid #0a66c2', color: '#0a66c2',
+              borderRadius: 24, border: '1px solid #0891b2', color: '#0891b2',
               fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none',
             }}>Search by Subject</Link>
           </div>

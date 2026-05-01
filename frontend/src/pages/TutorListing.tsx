@@ -47,7 +47,7 @@ function TutorCard({ tutor }: { tutor: TutorSummary }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
             <div style={{
-              width: 44, height: 44, borderRadius: '50%', background: '#0a66c2',
+              width: 44, height: 44, borderRadius: '50%', background: '#0891b2',
               color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontWeight: 700, fontSize: '1.1rem', flexShrink: 0,
             }}>
@@ -65,7 +65,7 @@ function TutorCard({ tutor }: { tutor: TutorSummary }) {
             </div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <p style={{ fontWeight: 700, color: '#0a66c2', fontSize: '1.1rem', margin: 0 }}>£{tutor.hourlyRate}/hr</p>
+            <p style={{ fontWeight: 700, color: '#0891b2', fontSize: '1.1rem', margin: 0 }}>£{tutor.hourlyRate}/hr</p>
             <Stars rating={tutor.averageRating} />
           </div>
         </div>
@@ -74,7 +74,7 @@ function TutorCard({ tutor }: { tutor: TutorSummary }) {
           {tutor.subjects.slice(0, 5).map((s) => (
             <span key={s.name} style={{
               padding: '0.15rem 0.6rem', borderRadius: 999, background: '#e8f0fe',
-              color: '#0a66c2', fontSize: '0.78rem', fontWeight: 500,
+              color: '#0891b2', fontSize: '0.78rem', fontWeight: 500,
             }}>{s.name}</span>
           ))}
           {tutor.subjects.length > 5 && (
@@ -208,7 +208,7 @@ export default function TutorListing() {
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button type="submit" style={{
-              padding: '0.5rem 1.5rem', borderRadius: 24, background: '#0a66c2',
+              padding: '0.5rem 1.5rem', borderRadius: 24, background: '#0891b2',
               color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem',
             }}>Search</button>
             <button type="button" onClick={() => {
@@ -250,7 +250,7 @@ export default function TutorListing() {
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
             <button key={p} onClick={() => handlePageChange(p)} aria-current={p === page ? 'page' : undefined} style={{
               padding: '0.35rem 0.75rem', border: '1px solid #ccc', borderRadius: 4,
-              background: p === page ? '#0a66c2' : '#fff', color: p === page ? '#fff' : '#333', cursor: 'pointer',
+              background: p === page ? '#0891b2' : '#fff', color: p === page ? '#fff' : '#333', cursor: 'pointer',
             }}>{p}</button>
           ))}
           <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages} style={{
